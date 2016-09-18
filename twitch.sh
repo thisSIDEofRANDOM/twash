@@ -55,7 +55,7 @@ case $1 in
       echo "Top Streams"
 
       #Parse Twitch JSON using jshon
-      $ARRAY array < <(curl -H "Client-ID: $TOKEN" -s https://api.twitch.tv/kraken/streams?limit=$LIMIT | jshon -e streams -a -e channel -e display_name -u -p -e game -u -p -p -e viewers)
+      $ARRAY -t array < <(curl -H "Client-ID: $TOKEN" -s https://api.twitch.tv/kraken/streams?limit=$LIMIT | jshon -e streams -a -e channel -e display_name -u -p -e game -u -p -p -e viewers)
 
       #Step Through Array 3 at a time
       while [ $COUNTER -lt $LIMIT ]; do
@@ -68,7 +68,7 @@ case $1 in
       echo "Top Games"
 
       #Parse Twitch JSON using jshon
-      $ARRAY array < <(curl -H "Client-ID: $TOKEN" -s https://api.twitch.tv/kraken/games/top?limit=$LIMIT | jshon -e top -a -e game -e name -u -p -p -e viewers -u)
+      $ARRAY -t array < <(curl -H "Client-ID: $TOKEN" -s https://api.twitch.tv/kraken/games/top?limit=$LIMIT | jshon -e top -a -e game -e name -u -p -p -e viewers -u)
 
       #Step Through Array 2 at a time
       while [ $COUNTER -lt $LIMIT ]; do
@@ -84,14 +84,14 @@ case $1 in
       GAME=${1// /%20}
 
       #Parse Twitch JSON using jshon
-      $ARRAY array < <(curl -H "Client-ID: $TOKEN" -s https://api.twitch.tv/kraken/streams?limit=$LIMIT\&game=$GAME | jshon -e streams -a -e channel -e display_name -u -p -p -e viewers)
+      $ARRAY -t array < <(curl -H "Client-ID: $TOKEN" -s https://api.twitch.tv/kraken/streams?limit=$LIMIT\&game=$GAME | jshon -e streams -a -e channel -e display_name -u -p -p -e viewers)
 
       #Catch if game name was mis typed since has to be exact.
       if [ ${#array[@]} -eq 0 ]; then
          echo -e "\n...No matching games found, did you mean one of the following?\n(Be sure to use quotes for games with spaces)"
 
          #Use twitch API to suggest games based on the name made
-         $ARRAY array < <(curl -H "Client-ID: $TOKEN" -s https://api.twitch.tv/kraken/search/games?q=$GAME\&type=suggest\&live=true |jshon -e games -a -e name -u -p -e popularity)
+         $ARRAY -t array < <(curl -H "Client-ID: $TOKEN" -s https://api.twitch.tv/kraken/search/games?q=$GAME\&type=suggest\&live=true |jshon -e games -a -e name -u -p -e popularity)
 
          #Check again for results
          if [ ${#array[@]} -eq 0 ]; then
