@@ -4,7 +4,7 @@
 #Description: Twitch BASH CLI browser
 #Author: Kevin Grigsby
 #Site: https://github.com/thisSIDEofRANDOM/twash
-#Version: 1.3
+#Version: 1.2
 #Release Date: 12/07/2016
 #TODO: Add better argument parsing/validation
 #      Add interactive mode with livestreamer
@@ -13,7 +13,6 @@
 #Variables
 LIMIT=5; COUNTER=0
 USAGE="twitch <ts,tg,{gamename}> <limit #>"
-
 #SAVE OAUTH HERE
 OAUTH=""
 TOKEN=""
@@ -55,7 +54,7 @@ case $1 in
       echo "Top Streams"
 
       #Parse Twitch JSON using jshon
-      $ARRAY -t array < <(curl -H "Client-ID: $TOKEN" -s https://api.twitch.tv/kraken/streams?limit=$LIMIT | jshon -e streams -a -e channel -e display_name -u -p -e game -u -p -p -e viewers)
+      $ARRAY array < <(curl -H "Client-ID: $TOKEN" -s https://api.twitch.tv/kraken/streams?limit=$LIMIT | jshon -e streams -a -e channel -e name -u -p -e game -u -p -p -e viewers)
 
       #Step Through Array 3 at a time
       while [ $COUNTER -lt $LIMIT ]; do
