@@ -83,7 +83,7 @@ case $1 in
       GAME=${1// /%20}
 
       #Parse Twitch JSON using jshon
-      $ARRAY -t array < <(curl -H "Client-ID: $TOKEN" -s https://api.twitch.tv/kraken/streams?limit=$LIMIT\&game=$GAME | jshon -e streams -a -e channel -e display_name -u -p -p -e viewers)
+      $ARRAY -t array < <(curl -H "Client-ID: $TOKEN" -s https://api.twitch.tv/kraken/streams?limit=$LIMIT\&game=$GAME | jshon -e streams -a -e channel -e name -u -p -p -e viewers)
 
       #Catch if game name was mis typed since has to be exact.
       if [ ${#array[@]} -eq 0 ]; then
