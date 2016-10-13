@@ -79,6 +79,7 @@ case $1 in
    me)
       echo "Your live follows:"
 
+      #Pull follows based on OAUTH, why do we need a different oauth instead of client token?
       $ARRAY -t array < <(curl -H "Authorization: OAuth $OAUTH" -s https://api.twitch.tv/kraken/streams/followed?stream_type=live | jshon -e streams -a -e channel -e name -u -p -e game -u)
 
       #Set limit based on received value. Not sure wat happens at 0 yet.
@@ -86,14 +87,13 @@ case $1 in
 
       #Step Through Array 2 at a time
       while [ $COUNTER -lt $LIMIT ]; do
-         echo
          echo ${array[@]:(($COUNTER*2)):2}
          ((COUNTER++))
       done						  
    ;;
-   #else assume we are searing for a game
+   #Else assume we are searing for a game
    *)
-      echo "top streamers for $1"
+      echo "Top streamers for $1"
 
       #Convert Spaces to %20 for webcall
       GAME=${1// /%20}
