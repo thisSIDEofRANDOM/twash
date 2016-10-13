@@ -4,7 +4,7 @@
 #Description: Twitch BASH CLI browser
 #Author: Kevin Grigsby
 #Site: https://github.com/thisSIDEofRANDOM/twash
-#Version: 1.2
+#Version: 1.3
 #Release Date: 12/07/2016
 #TODO: Add better argument parsing/validation
 #      Add interactive mode with livestreamer
@@ -75,9 +75,25 @@ case $1 in
          ((COUNTER++))
       done
    ;;
-   #Else assume we are searing for a game
+   #Experimental
+   me)
+      echo "Your live follows:"
+
+      $ARRAY -t array < <(curl -H "Authorization: OAuth $OAUTH" -s https://api.twitch.tv/kraken/streams/followed?stream_type=live | jshon -e streams -a -e channel -e name -u -p -e game -u)
+
+      #Set limit based on received value. Not sure wat happens at 0 yet.
+      LIMIT=$((${#array[@]}/3))
+
+      #Step Through Array 2 at a time
+      while [ $COUNTER -lt $LIMIT ]; do
+         echo
+         echo ${array[@]:(($COUNTER*2)):2}
+         ((COUNTER++))
+      done						  
+   ;;
+   #else assume we are searing for a game
    *)
-      echo "Top Streamers for $1"
+      echo "top streamers for $1"
 
       #Convert Spaces to %20 for webcall
       GAME=${1// /%20}
