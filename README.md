@@ -50,6 +50,11 @@ $ twitch Overwatch 1
 Top Streamers for Overwatch
 C9Sneaky 18630
 
+$ twitch me
+Live Followed Streamers:
+magic Magic: The Gathering
+sxyhxy H1Z1: King of the Kill
+
 $ twitch Pokemon
 Top Streamers for Pokemon
 
