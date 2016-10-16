@@ -82,7 +82,7 @@ case $1 in
       $ARRAY -t array < <(curl -H "Authorization: OAuth $OAUTH" -s https://api.twitch.tv/kraken/streams/followed?stream_type=live | jshon -e streams -a -e channel -e name -u -p -e game -u)
 
       # Set limit based on received value
-      LIMIT=$((${#array[@]}/3))
+      LIMIT=$((${#array[@]}/2))
 
       # Step Through Array 2 at a time
       while [ $COUNTER -lt $LIMIT ]; do
