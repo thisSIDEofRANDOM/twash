@@ -4,19 +4,35 @@
 #Description: Twitch BASH CLI browser
 #Author: tsunamibear
 #Site: https://github.com/thisSIDEofRANDOM/twash
-#Version: 1.4
-#Release Date: 16/10/2016
+#Version: 1.5
+#Release Date: 25/10/2016
 #TODO: Add better argument parsing/validation
 #      Add interactive mode with livestreamer
 #################################################
 
 # Variables
 LIMIT=5; COUNTER=0
-USAGE="twitch <ts,tg, me, {gamename}> <limit #>"
-#SAVE OAUTH HERE
-OAUTH=""
-TOKEN=""
+OAUTH=""; TOKEN=""
+USAGE="twitch <ts,tg,me, {gamename}> <limit #>"
+CONFIG="${HOME}/.config/twash"
 ARRAY=mapfile
+
+# Config file check/creation
+if [ -f "${CONFIG}/config" ]; then
+   . "${CONFIG}/config"
+else
+   echo "Config file missing, creating now..."
+   mkdir -p ${CONFIG}
+
+   read -p "OAUTH: " OAUTH
+
+   echo "OAUTH=\"$OAUTH\"" >> "${CONFIG}/config"
+   echo "LIMIT=$LIMIT" >> "${CONFIG}/config"
+
+   echo "...config file created at ${CONFIG}/config"
+   echo
+fi
+
 
 # Set array reader since some mac versions don't have mapfile
 if ! command -v $ARRAY >/dev/null; then
