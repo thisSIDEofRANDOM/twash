@@ -13,7 +13,7 @@
 # Variables
 LIMIT=5; COUNTER=0
 USAGE="twitch <ts,tg, me, {gamename}> <limit #>"
-# SAVE OAUTH HERE UNTIL CONFIG FILE SET UP
+#SAVE OAUTH HERE
 OAUTH=""
 TOKEN=""
 ARRAY=mapfile
@@ -83,6 +83,11 @@ case $1 in
 
       # Set limit based on received value
       LIMIT=$((${#array[@]}/2))
+
+      # Sad face if no follows are live
+      if [ ${#array[@]} -eq 0 ]; then
+         echo "No one you follow is live :("
+      fi
 
       # Step Through Array 2 at a time
       while [ $COUNTER -lt $LIMIT ]; do
