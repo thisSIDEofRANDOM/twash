@@ -38,7 +38,7 @@ fi
 
 #The below opens a browser to authenticate and retrieve an OAUTH. We open up a nc to make the call back cleaner, but also messy.
 #xdg-open 'https://api.twitch.tv/kraken/oauth2/authorize?response_type=token&client_id=5k0hscvhd7l4o7iy1j3bo8tmpmvspq4&redirect_uri=http://localhost:57483&scope=user_follows_edit'
-#echo -e "HTTP/1.1 200 OK\n\n<script>alert('OAUTH Token: \\\n' + ((window.location.hash.substr(1)).split('&')[0]).split('=')[1])</script>You may close this window" | nc -l localhost 57483 > /dev/null
+#echo -e "HTTP/1.1 200 OK\n\n<script>alert('OAUTH Token: ' + ((window.location.hash.substr(1)).split('&')[0]).split('=')[1] + '\\\nRecord this in to your twash config')</script>" | nc -l localhost 57483 > /dev/null
 
 # Set array reader since some mac versions don't have mapfile
 if ! command -v $ARRAY >/dev/null; then
