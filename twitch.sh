@@ -4,15 +4,18 @@
 #Description: Twitch BASH CLI browser
 #Author: tsunamibear
 #Site: https://github.com/thisSIDEofRANDOM/twash
-#Version: 1.5
+#Version: 1.6
 #Release Date: 25/10/2016
-#TODO: Add better argument parsing/validation
-#      Add interactive mode with livestreamer
+#Release Notes: Seems that OAuth works again
+# - Started working on function to generate
+#   OAuth token/approval in browser
+# - Initial follow/unfollow functions
+# - Lots of junk to clean up in next release
 #################################################
 
 # Variables
 LIMIT=5; COUNTER=0
-OAUTH=""; TOKEN=""
+OAUTH=""; TOKEN=""; USER="" #don't seem to need token passively anymore. Passing an oauth seems to be "good enough"
 USAGE="twitch <ts,tg,me, {gamename}> <limit #>"
 CONFIG="${HOME}/.config/twash"
 ARRAY=mapfile
@@ -33,6 +36,9 @@ else
    echo
 fi
 
+#The below opens a browser to authenticate and retrieve an OAUTH. We open up a nc to make the call back cleaner, but also messy.
+#xdg-open 'https://api.twitch.tv/kraken/oauth2/authorize?response_type=token&client_id=5k0hscvhd7l4o7iy1j3bo8tmpmvspq4&redirect_uri=http://localhost:57483&scope=user_follows_edit'
+#echo -e "HTTP/1.1 200 OK\n\n<script>alert('OAUTH Token: \\\n' + ((window.location.hash.substr(1)).split('&')[0]).split('=')[1])</script>You may close this window" | nc -l localhost 57483 > /dev/null
 
 # Set array reader since some mac versions don't have mapfile
 if ! command -v $ARRAY >/dev/null; then
@@ -57,10 +63,14 @@ if [ -z $OAUTH ]; then
 fi
 
 # Twitches now requires a token for some calls
+# 2016-12-1 this doesn't seem to be the case anymore, a valid oauth is working again. Leaving this here as a oauth validator though
 if ! TOKEN=$(curl -H "Authorization: OAuth $OAUTH" -s https://api.twitch.tv/kraken | jshon -Q -e token -e client_id -u); then
     echo "Incorrect OAUTH or Twitch API down" 
     exit 1
 fi
+
+# Hacky username set till I combine the above in to one call
+USER=$(curl -H "Authorization: OAuth $OAUTH" -s https://api.twitch.tv/kraken | jshon -Q -e token -e user_name -u)
 
 # Case Switch for functionality
 case $1 in
@@ -69,7 +79,8 @@ case $1 in
       echo "Top Streams"
 
       # Parse Twitch JSON using jshon
-      $ARRAY array < <(curl -H "Client-ID: $TOKEN" -s https://api.twitch.tv/kraken/streams?limit=$LIMIT | jshon -e streams -a -e channel -e name -u -p -e game -u -p -p -e viewers)
+#      $ARRAY array < <(curl -H "Client-ID: $TOKEN" -s https://api.twitch.tv/kraken/streams?limit=$LIMIT | jshon -e streams -a -e channel -e name -u -p -e game -u -p -p -e viewers)
+      $ARRAY array < <(curl -H "Authorization: OAuth $OAUTH" -s https://api.twitch.tv/kraken/streams?limit=$LIMIT | jshon -e streams -a -e channel -e name -u -p -e game -u -p -p -e viewers)
 
       # Step Through Array 3 at a time
       while [ $COUNTER -lt $LIMIT ]; do
@@ -82,7 +93,8 @@ case $1 in
       echo "Top Games"
 
       # Parse Twitch JSON using jshon
-      $ARRAY -t array < <(curl -H "Client-ID: $TOKEN" -s https://api.twitch.tv/kraken/games/top?limit=$LIMIT | jshon -e top -a -e game -e name -u -p -p -e viewers -u)
+#      $ARRAY -t array < <(curl -H "Client-ID: $TOKEN" -s https://api.twitch.tv/kraken/games/top?limit=$LIMIT | jshon -e top -a -e game -e name -u -p -p -e viewers -u)
+      $ARRAY -t array < <(curl -H "Authorization: OAuth $OAUTH" -s https://api.twitch.tv/kraken/games/top?limit=$LIMIT | jshon -e top -a -e game -e name -u -p -p -e viewers -u)
 
       # Step Through Array 2 at a time
       while [ $COUNTER -lt $LIMIT ]; do
@@ -112,6 +124,21 @@ case $1 in
       done						  
    ;;
    # Else assume we are searching for a game
+   # Follow a streamer
+   fol)
+      echo "Warning experimental function..."
+      echo "Now Following $2"
+
+      curl -H "Authorization: OAuth $OAUTH" -s -X PUT https://api.twitch.tv/kraken/users/$USER/follows/channels/$2 > /dev/null
+   ;;
+   # Unfollow a streamer
+   ufol)
+      echo "Warning experimental function..."
+      echo "Unfollowing $2"
+
+      curl -H "Authorization: OAuth $OAUTH" -s -X DELETE https://api.twitch.tv/kraken/users/$USER/follows/channels/$2
+   ;;
+   # Search for top streams of a game
    *)
       echo "Top streamers for $1"
 
@@ -119,7 +146,8 @@ case $1 in
       GAME=${1// /%20}
 
       # Parse Twitch JSON using jshon
-      $ARRAY -t array < <(curl -H "Client-ID: $TOKEN" -s https://api.twitch.tv/kraken/streams?limit=$LIMIT\&game=$GAME | jshon -e streams -a -e channel -e name -u -p -p -e viewers)
+#      $ARRAY -t array < <(curl -H "Client-ID: $TOKEN" -s https://api.twitch.tv/kraken/streams?limit=$LIMIT\&game=$GAME | jshon -e streams -a -e channel -e name -u -p -p -e viewers)
+      $ARRAY -t array < <(curl -H "Authorization: OAuth $OAUTH" -s https://api.twitch.tv/kraken/streams?limit=$LIMIT\&game=$GAME | jshon -e streams -a -e channel -e name -u -p -p -e viewers)
 
       # Catch if game name was mis typed since has to be exact.
       if [ ${#array[@]} -eq 0 ]; then
