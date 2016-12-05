@@ -130,7 +130,7 @@ case $1 in
       echo "Warning experimental function..."
       echo "Following $2"
 
-      curl -H "Authorization: OAuth $OAUTH" -s -X PUT https://api.twitch.tv/kraken/users/$USER/follows/channels/$2 #> /dev/null
+      curl -H "Authorization: OAuth $OAUTH" -s -X PUT https://api.twitch.tv/kraken/users/$USER/follows/channels/$2 | jshon #> /dev/null
    ;;
    # Unfollow a streamer
    ufol)
