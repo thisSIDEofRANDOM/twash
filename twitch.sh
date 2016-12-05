@@ -137,7 +137,7 @@ case $1 in
       echo "Warning experimental function..."
       echo "Unfollowing $2"
 
-      curl -H "Authorization: OAuth $OAUTH" -s -X DELETE https://api.twitch.tv/kraken/users/$USER/follows/channels/$2
+      curl -H "Authorization: OAuth $OAUTH" -s -X DELETE https://api.twitch.tv/kraken/users/$USER/follows/channels/$2 | jshon #> /dev/null
    ;;
    # Search for top streams of a game
    *)
