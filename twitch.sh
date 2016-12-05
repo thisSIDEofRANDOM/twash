@@ -4,28 +4,45 @@
 #Description: Twitch BASH CLI browser
 #Author: tsunamibear
 #Site: https://github.com/thisSIDEofRANDOM/twash
-#Version: 1.6
-#Release Date: 25/10/2016
+#Version: 1.7
+#Release Date: 05/12/2016
 #Release Notes: Seems that OAuth works again
-# - Started working on function to generate
-#   OAuth token/approval in browser
+# - Auth opens browser window now for OAuth
 # - Initial follow/unfollow functions
-# - Lots of junk to clean up in next release
 #################################################
 
 # Variables
 LIMIT=5; COUNTER=0
-OAUTH=""; TOKEN=""; USER="" #don't seem to need token passively anymore. Passing an oauth seems to be "good enough"
+OAUTH=""; USER="" 
 USAGE="twitch <ts,tg,me, {gamename}> <limit #>"
 CONFIG="${HOME}/.config/twash"
 ARRAY=mapfile
+OPEN=xdg-open
+
+# Reports some versions of mac don't have mapfile
+if ! command -v $ARRAY >/dev/null; then
+   ARRAY=readarray
+fi
 
 # Config file check/creation
 if [ -f "${CONFIG}/config" ]; then
    . "${CONFIG}/config"
 else
-   echo "Config file missing, creating now..."
+   # Native opener, might need to clean this up later
+   if ! command -v $OPEN >/dev/null; then
+      OPEN=open
+      if ! command -v $OPEN >/dev/null; then
+         echo "xdg-utils or OSX open commands missing, setting firefox as failback..."
+         OPEN=firefox
+      fi
+   fi
+
+   echo "Config file missing, creating file..."
    mkdir -p ${CONFIG}
+
+   $OPEN 'https://api.twitch.tv/kraken/oauth2/authorize?response_type=token&client_id=5k0hscvhd7l4o7iy1j3bo8tmpmvspq4&redirect_uri=https://thissideofrandom.github.io/twash/&scope=user_follows_edit'
+   # Incase we ever need to use a local redirect instead of github netcat is viable...
+   #echo -e "HTTP/1.1 200 OK\n\n<script>alert('OAUTH Token: ' + ((window.location.hash.substr(1)).split('&')[0]).split('=')[1] + '\\\nRecord this in to your twash config')</script>You may now close this window." | nc -l localhost 57483 > /dev/null
 
    read -p "OAUTH: " OAUTH
 
@@ -34,15 +51,6 @@ else
 
    echo "...config file created at ${CONFIG}/config"
    echo
-fi
-
-#The below opens a browser to authenticate and retrieve an OAUTH. We open up a nc to make the call back cleaner, but also messy.
-#xdg-open 'https://api.twitch.tv/kraken/oauth2/authorize?response_type=token&client_id=5k0hscvhd7l4o7iy1j3bo8tmpmvspq4&redirect_uri=http://localhost:57483&scope=user_follows_edit'
-#echo -e "HTTP/1.1 200 OK\n\n<script>alert('OAUTH Token: ' + ((window.location.hash.substr(1)).split('&')[0]).split('=')[1] + '\\\nRecord this in to your twash config')</script>" | nc -l localhost 57483 > /dev/null
-
-# Set array reader since some mac versions don't have mapfile
-if ! command -v $ARRAY >/dev/null; then
-   ARRAY=readarray
 fi
 
 # Usage Check
@@ -58,19 +66,15 @@ fi
 
 # OAUTH check
 if [ -z $OAUTH ]; then
-    echo "OAUTH not set, please modify script variable to continue."
+    echo "OAUTH not set, please fix or delete config to continue."
     exit 1
 fi
 
-# Twitches now requires a token for some calls
-# 2016-12-1 this doesn't seem to be the case anymore, a valid oauth is working again. Leaving this here as a oauth validator though
-if ! TOKEN=$(curl -H "Authorization: OAuth $OAUTH" -s https://api.twitch.tv/kraken | jshon -Q -e token -e client_id -u); then
+# Validate OAUTH is OK before proceeding and grab our username here, Old use was for client_id which is static
+if ! USER=$(curl -H "Authorization: OAuth $OAUTH" -s https://api.twitch.tv/kraken | jshon -Q -e token -e user_name -u); then
     echo "Incorrect OAUTH or Twitch API down" 
     exit 1
 fi
-
-# Hacky username set till I combine the above in to one call
-USER=$(curl -H "Authorization: OAuth $OAUTH" -s https://api.twitch.tv/kraken | jshon -Q -e token -e user_name -u)
 
 # Case Switch for functionality
 case $1 in
@@ -79,7 +83,6 @@ case $1 in
       echo "Top Streams"
 
       # Parse Twitch JSON using jshon
-#      $ARRAY array < <(curl -H "Client-ID: $TOKEN" -s https://api.twitch.tv/kraken/streams?limit=$LIMIT | jshon -e streams -a -e channel -e name -u -p -e game -u -p -p -e viewers)
       $ARRAY array < <(curl -H "Authorization: OAuth $OAUTH" -s https://api.twitch.tv/kraken/streams?limit=$LIMIT | jshon -e streams -a -e channel -e name -u -p -e game -u -p -p -e viewers)
 
       # Step Through Array 3 at a time
@@ -93,7 +96,6 @@ case $1 in
       echo "Top Games"
 
       # Parse Twitch JSON using jshon
-#      $ARRAY -t array < <(curl -H "Client-ID: $TOKEN" -s https://api.twitch.tv/kraken/games/top?limit=$LIMIT | jshon -e top -a -e game -e name -u -p -p -e viewers -u)
       $ARRAY -t array < <(curl -H "Authorization: OAuth $OAUTH" -s https://api.twitch.tv/kraken/games/top?limit=$LIMIT | jshon -e top -a -e game -e name -u -p -p -e viewers -u)
 
       # Step Through Array 2 at a time
@@ -123,13 +125,12 @@ case $1 in
          ((COUNTER++))
       done						  
    ;;
-   # Else assume we are searching for a game
    # Follow a streamer
    fol)
       echo "Warning experimental function..."
-      echo "Now Following $2"
+      echo "Following $2"
 
-      curl -H "Authorization: OAuth $OAUTH" -s -X PUT https://api.twitch.tv/kraken/users/$USER/follows/channels/$2 > /dev/null
+      curl -H "Authorization: OAuth $OAUTH" -s -X PUT https://api.twitch.tv/kraken/users/$USER/follows/channels/$2 #> /dev/null
    ;;
    # Unfollow a streamer
    ufol)
@@ -140,13 +141,12 @@ case $1 in
    ;;
    # Search for top streams of a game
    *)
-      echo "Top streamers for $1"
+      echo "Top streams for $1"
 
       # Convert Spaces to %20 for webcall
       GAME=${1// /%20}
 
       # Parse Twitch JSON using jshon
-#      $ARRAY -t array < <(curl -H "Client-ID: $TOKEN" -s https://api.twitch.tv/kraken/streams?limit=$LIMIT\&game=$GAME | jshon -e streams -a -e channel -e name -u -p -p -e viewers)
       $ARRAY -t array < <(curl -H "Authorization: OAuth $OAUTH" -s https://api.twitch.tv/kraken/streams?limit=$LIMIT\&game=$GAME | jshon -e streams -a -e channel -e name -u -p -p -e viewers)
 
       # Catch if game name was mis typed since has to be exact.
@@ -154,7 +154,7 @@ case $1 in
          echo -e "\n...No matching games found, did you mean one of the following?\n(Be sure to use quotes for games with spaces)"
 
          # Use twitch API to suggest games based on the name made
-         $ARRAY -t array < <(curl -H "Client-ID: $TOKEN" -s https://api.twitch.tv/kraken/search/games?q=$GAME\&type=suggest\&live=true |jshon -e games -a -e name -u -p -e popularity)
+         $ARRAY -t array < <(curl -H "Authorization: OAuth $OAUTH" -s https://api.twitch.tv/kraken/search/games?q=$GAME\&type=suggest\&live=true | jshon -e games -a -e name -u -p -e popularity)
 
          # Check again for results
          if [ ${#array[@]} -eq 0 ]; then
