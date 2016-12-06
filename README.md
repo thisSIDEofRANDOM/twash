@@ -1,23 +1,23 @@
 # twash
 Browse for top twitch streams using CLI!
 
-Requires - jshon installed and bash > v4.0
+Requires - jshon installed and bash > v4.0, xdg-utils is preffered on linux but can fall back to a regular browser like firefox.
 
 I didn't like that the only solutions I could find for a CLI twitch browser to use with livestreamer were written in node. This is an attempt to bring a simple way to search for streams to launch with live streamer.
 
 Usage:
 All commands assume 5 results unless the second argument over rides this number
 
-- twitch ts <#> returns current top streams including streamer name, game name, and view count
-- twitch tg <#> returns current top games including game name, and view count
-- twitch GAMENAME <#> search for top streams for the given game name. Includes streamername, and view count
+- twitch ts <#> | returns current top streams including streamer name, game name, and view count
+- twitch tg <#> | returns current top games including game name, and view count
+- twitch GAMENAME <#> | search for top streams for the given game name. Includes streamername, and view count
+- twitch me | displays a list of live followed users, doesn't respect a limit. Includes live followed streamers and game names
+- - - Experimental Commands - - -
+- - Warning these are verbose - -
+- twitch fol Username | attempts to follow a user
+- twitch ufol Username | attempts to unfollow a user
 
-Note - GAMENAME must be passed in quotes if it has spaces currently.
-
-REQUIRED - Manually add your OAUTH for twitch to the script where it asks you too.
-
-TODO: Better argument parsin and validation needs to be added
-      Interactive mode to launch live streamer from returned results
+Note - GAMENAME must be passed in quotes if it has spaces currently. On first run application will auth users via xdg-open or open for OSX. 
 
 Example output:
 
