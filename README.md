@@ -12,8 +12,9 @@ All commands assume 5 results unless the second argument over rides this number
 - twitch tg <#> | returns current top games including game name, and view count
 - twitch GAMENAME <#> | search for top streams for the given game name. Includes streamername, and view count
 - twitch me | displays a list of live followed users, doesn't respect a limit. Includes live followed streamers and game names
-- - - Experimental Commands - - -
-- - Warning these are verbose - -
+
+Experimental Commands, Warning these are verbose
+
 - twitch fol Username | attempts to follow a user
 - twitch ufol Username | attempts to unfollow a user
 
