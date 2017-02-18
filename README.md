@@ -17,6 +17,7 @@ Experimental Commands, Warning these are verbose
 
 - twitch fol Username | attempts to follow a user
 - twitch ufol Username | attempts to unfollow a user
+- twitch com CommunityName | attempts to get a list of streamers in a community
 
 Note - GAMENAME must be passed in quotes if it has spaces currently. On first run application will auth users via xdg-open or open for OSX. 
 
