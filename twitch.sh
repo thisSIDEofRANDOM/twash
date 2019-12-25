@@ -4,12 +4,11 @@
 #Description: Twitch BASH CLI browser
 #Author: tsunamibear
 #Site: https://github.com/thisSIDEofRANDOM/twash
-#Version: 1.8
-#Release Date: 05/12/2016
-#Release Notes: Seems that OAuth works again
-# - Auth opens browser window now for OAuth
-# - Initial follow/unfollow functions
-# - Initial community function
+#Version: 2.0
+#Release Date: 12/25/2019
+#Release Notes: Twitch "New API"
+# - fol,unfol,com broken on "New API"
+# - Search no longer suggests games on "New API"
 #################################################
 
 # Variables
@@ -41,7 +40,7 @@ else
    echo "Config file missing, creating file..."
    mkdir -p ${CONFIG}
 
-   $OPEN 'https://api.twitch.tv/kraken/oauth2/authorize?response_type=token&client_id=5k0hscvhd7l4o7iy1j3bo8tmpmvspq4&redirect_uri=https://thissideofrandom.github.io/twash/&scope=user_follows_edit%20user_read'
+   $OPEN 'https://id.twitch.tv/oauth2/authorize?response_type=token&client_id=5k0hscvhd7l4o7iy1j3bo8tmpmvspq4&&redirect_uri=https://thissideofrandom.github.io/twash/&scope=user:edit'
    # Incase we ever need to use a local redirect instead of github netcat is viable...
    #echo -e "HTTP/1.1 200 OK\n\n<script>alert('OAUTH Token: ' + ((window.location.hash.substr(1)).split('&')[0]).split('=')[1] + '\\\nRecord this in to your twash config')</script>You may now close this window." | nc -l localhost 57483 > /dev/null
 
@@ -72,10 +71,15 @@ if [ -z $OAUTH ]; then
 fi
 
 # Validate OAUTH is OK before proceeding and grab our username here, Old use was for client_id which is static
-if ! USER=$(curl -H "Authorization: OAuth $OAUTH" -s https://api.twitch.tv/kraken | jshon -Q -e token -e user_name -u); then
+if ! USER=$(curl -H "Authorization: OAuth $OAUTH" -s https://id.twitch.tv/oauth2/validate | jshon -Q -e user_id -u); then
     echo "Incorrect OAUTH or Twitch API down" 
     exit 1
 fi
+
+# Convert Game ID
+convert_id() {
+   curl -H "Authorization: Bearer $OAUTH" -s https://api.twitch.tv/helix/games/?id=$1 | jshon -e data -a -e name -u
+}
 
 # Case Switch for functionality
 case $1 in
@@ -84,7 +88,16 @@ case $1 in
       echo "Top Streams"
 
       # Parse Twitch JSON using jshon
-      $ARRAY array < <(curl -H "Authorization: OAuth $OAUTH" -s https://api.twitch.tv/kraken/streams?limit=$LIMIT | jshon -e streams -a -e channel -e name -u -p -e game -u -p -p -e viewers)
+      $ARRAY array < <(curl -H "Authorization: Bearer $OAUTH" -s https://api.twitch.tv/helix/streams?first=$LIMIT | jshon -e data -a -e user_name -u -p -e game_id -u -p -e viewer_count -u)
+
+      # Convert game IDs to game Names
+      # Note: This is slow, we should make a single call instead of $LIMIT calls
+      # However calling multiple game_ids in the same call has no guarantee of order
+      # Likely need to build a local cache/mapping in app
+      for (( c=1; c<=${#array[@]}; c+=3 ))
+      do
+         array[$c]=`convert_id ${array[$c]}`
+      done
 
       # Step Through Array 3 at a time
       while [ $COUNTER -lt $LIMIT ]; do
@@ -97,11 +110,11 @@ case $1 in
       echo "Top Games"
 
       # Parse Twitch JSON using jshon
-      $ARRAY -t array < <(curl -H "Authorization: OAuth $OAUTH" -s https://api.twitch.tv/kraken/games/top?limit=$LIMIT | jshon -e top -a -e game -e name -u -p -p -e viewers -u)
+      $ARRAY -t array < <(curl -H "Authorization: Bearer $OAUTH" -s https://api.twitch.tv/helix/games/top?first=$LIMIT | jshon -e data -a -e name -u)
 
       # Step Through Array 2 at a time
       while [ $COUNTER -lt $LIMIT ]; do
-         echo ${array[@]:(($COUNTER*2)):2}
+         echo ${array[$COUNTER]}
          ((COUNTER++))
       done
    ;;
@@ -109,65 +122,49 @@ case $1 in
    me)
       echo "Live Followed Streamers:"
 
+      # Pull follow IDs
+      FOLLOW_IDS=$(curl -H "Authorization: Bearer $OAUTH" -s https://api.twitch.tv/hel"ix/users/follows?from_id=$USER&first=100" | jshon -e data -a -e to_id -u)
+
+      FOLLOW_IDS=${FOLLOW_IDS//[[:space:]]/\&user_id=}
+
       # Pull follows based on OAUTH
-      $ARRAY -t array < <(curl -H "Authorization: OAuth $OAUTH" -s https://api.twitch.tv/kraken/streams/followed?stream_type=live | jshon -e streams -a -e channel -e name -u -p -e game -u)
+      $ARRAY array < <(curl -H "Authorization: Bearer $OAUTH" -s "https://api.twitch.tv/helix/streams?first=$LIMIT&user_id=$FOLLOW_IDS" | jshon -e data -a -e user_name -u -p -e game_id -u -p -e viewer_count -u)
 
       # Set limit based on received value
-      LIMIT=$((${#array[@]}/2))
+      LIMIT=$((${#array[@]}/3))
 
       # Sad face if no follows are live
       if [ ${#array[@]} -eq 0 ]; then
          echo "No one you follow is live :("
       fi
 
-      # Step Through Array 2 at a time
-      while [ $COUNTER -lt $LIMIT ]; do
-         echo ${array[@]:(($COUNTER*2)):2}
-         ((COUNTER++))
-      done						  
-   ;;
-   # Follow a streamer
-   fol)
-      echo "Warning experimental function..."
-      echo "Following $2"
-
-      curl -H "Authorization: OAuth $OAUTH" -s -X PUT https://api.twitch.tv/kraken/users/$USER/follows/channels/$2 | jshon #> /dev/null
-   ;;
-   # Unfollow a streamer
-   ufol)
-      echo "Warning experimental function..."
-      echo "Unfollowing $2"
-
-      curl -H "Authorization: OAuth $OAUTH" -s -X DELETE https://api.twitch.tv/kraken/users/$USER/follows/channels/$2 | jshon -Q #> /dev/null
-   ;;
-   # Get community streams
-   com)
-      echo "Warning experimental function..."
-      echo
-
-      if ! COMID=$(curl -H "Authorization: OAuth $OAUTH" -H "Accept: application/vnd.twitchtv.v5+json" -s https://api.twitch.tv/kraken/communities?name=$2 | jshon -Q -e "_id" -u); then
-         echo "No community found for $2"
-	 exit 1
-      fi
-      echo "Community streams in: $2"
-
-      $ARRAY -t array < <(curl -H "Authorization: OAuth $OAUTH" -H "Accept: application/vnd.twitchtv.v5+json" -s https://api.twitch.tv/kraken/streams?community_id=$COMID | jshon -e streams -a -e channel -e name -u -p -e game -u -p -p -e viewers)
-
-      LIMIT=$((${#array[@]}/3))
-
-      # Sad face if no follows are live
-      if [ ${#array[@]} -eq 0 ]; then
-         echo "No live streams under this community :("
-      fi
+      # Convert game IDs to game Names
+      # Note: This is slow, we should make a single call instead of $LIMIT calls
+      for (( c=1; c<=${#array[@]}; c+=3 ))
+      do
+         array[$c]=`convert_id ${array[$c]}`
+      done
 
       # Step Through Array 3 at a time
       while [ $COUNTER -lt $LIMIT ]; do
          echo ${array[@]:(($COUNTER*3)):3}
          ((COUNTER++))
-      done
+      done						  
+   ;;
+   # Follow a streamer
+   fol)
+      echo "The new Twitch API doesn't currently support following"
+   ;;
+   # Unfollow a streamer
+   ufol)
+      echo "The new Twitch API doesn't currently support unfollowing"
+   ;;
+   com)
+      echo "The new Twitch API doesn't currently support communities"
    ;;
    # Search for top streams of a game
    *)
+      echo "The new twitch API doesn't currently support fuzzy searching"
       echo "Top streams for $1"
 
       # Convert Spaces to %20 for webcall
@@ -176,22 +173,15 @@ case $1 in
       # Convert Ampersands to %26 for webcall
       GAME=${GAME//&/%26}
 
-      # Parse Twitch JSON using jshon
-      $ARRAY -t array < <(curl -H "Authorization: OAuth $OAUTH" -s https://api.twitch.tv/kraken/streams?limit=$LIMIT\&game=$GAME | jshon -e streams -a -e channel -e name -u -p -p -e viewers)
+      GAME_ID=$(curl -H "Authorization: Bearer $OAUTH" -s "https://api.twitch.tv/helix/games?limit=$LIMIT\&name=$GAME" | jshon -Q -e data -a -e id -u)
 
-      # Catch if game name was mis typed since has to be exact.
-      if [ ${#array[@]} -eq 0 ]; then
-         echo -e "\n...No matching games found, did you mean one of the following?\n(Be sure to use quotes for games with spaces)"
-
-	 # Use twitch API to suggest games based on the name made
-         $ARRAY -t array < <(curl -H "Authorization: OAuth $OAUTH" -s https://api.twitch.tv/kraken/search/games?q=$GAME\&type=suggest\&live=true | jshon -e games -a -e name -u -p -e popularity)
-
-         # Check again for results
-         if [ ${#array[@]} -eq 0 ]; then
-            echo "No live channels matching your game found"
-            exit
-         fi
+      # Sad face if no follows are live
+      if [ $GAME_ID -eq 0 ]; then
+         echo -e "\n...No matching games found, did you spell your game right?\n(Be sure to use quotes for games with spaces)"
       fi
+
+      # Parse Twitch JSON using jshon
+      $ARRAY array < <(curl -H "Authorization: Bearer $OAUTH" -s "https://api.twitch.tv/helix/streams?first=$LIMIT&game_id=$GAME_ID" | jshon -e data -a -e user_name -u -p -e viewer_count -u)
 
       # If returned streams is less than limit, adjust limit to avoid printing extra lines
       if [ ${#array[@]} -lt $(($LIMIT*2)) ]; then
