@@ -96,7 +96,28 @@ case $1 in
       # Likely need to build a local cache/mapping in app
       for (( c=1; c<=${#array[@]}; c+=3 ))
       do
-         array[$c]=`convert_id ${array[$c]}`
+         GAME_IDS[${array[$c]}]=NULL
+      done
+
+      GAME_IDS=${!GAME_IDS[@]}
+
+      GAME_IDS=${GAME_IDS//[[:space:]]/\&id=}
+
+      $ARRAY gamearray < <(curl -H "Authorization: Bearer $OAUTH" -s https://api.twitch.tv/helix/games/?id=$GAME_IDS | jshon -e data -a -e id -u -p -e name -u)
+
+      for (( d=0; d<=${#gamearray[@]}; d+=2 ))
+      do
+         GAME_IDS[${gamearray[$d]}]="${gamearray[$d+1]}"
+      done
+
+      # Convert game IDs to game Names
+      # Note: This is slow, we should make a single call instead of $LIMIT calls
+      # However calling multiple game_ids in the same call has no guarantee of order
+      # Likely need to build a local cache/mapping in app
+      for (( e=1; e<=${#array[@]}; e+=3 ))
+      do
+         ID=${array[$e]}
+         array[$e]="${GAME_IDS[$ID]}"
       done
 
       # Step Through Array 3 at a time
@@ -112,7 +133,7 @@ case $1 in
       # Parse Twitch JSON using jshon
       $ARRAY -t array < <(curl -H "Authorization: Bearer $OAUTH" -s https://api.twitch.tv/helix/games/top?first=$LIMIT | jshon -e data -a -e name -u)
 
-      # Step Through Array 2 at a time
+      # Step Through Array
       while [ $COUNTER -lt $LIMIT ]; do
          echo ${array[$COUNTER]}
          ((COUNTER++))
@@ -123,7 +144,7 @@ case $1 in
       echo "Live Followed Streamers:"
 
       # Pull follow IDs
-      FOLLOW_IDS=$(curl -H "Authorization: Bearer $OAUTH" -s https://api.twitch.tv/hel"ix/users/follows?from_id=$USER&first=100" | jshon -e data -a -e to_id -u)
+      FOLLOW_IDS=$(curl -H "Authorization: Bearer $OAUTH" -s "https://api.twitch.tv/helix/users/follows?from_id=$USER&first=100" | jshon -e data -a -e to_id -u)
 
       FOLLOW_IDS=${FOLLOW_IDS//[[:space:]]/\&user_id=}
 
