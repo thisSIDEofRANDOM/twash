@@ -78,7 +78,7 @@ fi
 
 # Convert Game ID
 convert_id() {
-   curl -H "Authorization: Bearer $OAUTH" -s https://api.twitch.tv/helix/games/?id=$1 | jshon -e data -a -e name -u
+   curl -H "Client-ID: 5k0hscvhd7l4o7iy1j3bo8tmpmvspq4" -H "Authorization: Bearer $OAUTH" -s https://api.twitch.tv/helix/games/?id=$1 | jshon -e data -a -e name -u
 }
 
 # Case Switch for functionality
@@ -88,7 +88,7 @@ case $1 in
       echo "Top Streams"
 
       # Parse Twitch JSON using jshon
-      $ARRAY array < <(curl -H "Authorization: Bearer $OAUTH" -s https://api.twitch.tv/helix/streams?first=$LIMIT | jshon -e data -a -e user_name -u -p -e game_id -u -p -e viewer_count -u)
+      $ARRAY array < <(curl -H "Client-ID: 5k0hscvhd7l4o7iy1j3bo8tmpmvspq4" -H "Authorization: Bearer $OAUTH" -s https://api.twitch.tv/helix/streams?first=$LIMIT | jshon -e data -a -e user_name -u -p -e game_id -u -p -e viewer_count -u)
 
       # Convert game IDs to game Names
       # Note: This is slow, we should make a single call instead of $LIMIT calls
@@ -103,7 +103,7 @@ case $1 in
 
       GAME_IDS=${GAME_IDS//[[:space:]]/\&id=}
 
-      $ARRAY gamearray < <(curl -H "Authorization: Bearer $OAUTH" -s https://api.twitch.tv/helix/games/?id=$GAME_IDS | jshon -e data -a -e id -u -p -e name -u)
+      $ARRAY gamearray < <(curl -H "Client-ID: 5k0hscvhd7l4o7iy1j3bo8tmpmvspq4" -H "Authorization: Bearer $OAUTH" -s https://api.twitch.tv/helix/games/?id=$GAME_IDS | jshon -e data -a -e id -u -p -e name -u)
 
       for (( d=0; d<=${#gamearray[@]}; d+=2 ))
       do
@@ -131,7 +131,7 @@ case $1 in
       echo "Top Games"
 
       # Parse Twitch JSON using jshon
-      $ARRAY -t array < <(curl -H "Authorization: Bearer $OAUTH" -s https://api.twitch.tv/helix/games/top?first=$LIMIT | jshon -e data -a -e name -u)
+      $ARRAY -t array < <(curl -H "Client-ID: 5k0hscvhd7l4o7iy1j3bo8tmpmvspq4" -H "Authorization: Bearer $OAUTH" -s https://api.twitch.tv/helix/games/top?first=$LIMIT | jshon -e data -a -e name -u)
 
       # Step Through Array
       while [ $COUNTER -lt $LIMIT ]; do
@@ -144,12 +144,12 @@ case $1 in
       echo "Live Followed Streamers:"
 
       # Pull follow IDs
-      FOLLOW_IDS=$(curl -H "Authorization: Bearer $OAUTH" -s "https://api.twitch.tv/helix/users/follows?from_id=$USER&first=100" | jshon -e data -a -e to_id -u)
+      FOLLOW_IDS=$(curl -H "Client-ID: 5k0hscvhd7l4o7iy1j3bo8tmpmvspq4" -H "Authorization: Bearer $OAUTH" -s "https://api.twitch.tv/helix/users/follows?from_id=$USER&first=100" | jshon -e data -a -e to_id -u)
 
       FOLLOW_IDS=${FOLLOW_IDS//[[:space:]]/\&user_id=}
 
       # Pull follows based on OAUTH
-      $ARRAY array < <(curl -H "Authorization: Bearer $OAUTH" -s "https://api.twitch.tv/helix/streams?first=$LIMIT&user_id=$FOLLOW_IDS" | jshon -e data -a -e user_name -u -p -e game_id -u -p -e viewer_count -u)
+      $ARRAY array < <(curl -H "Client-ID: 5k0hscvhd7l4o7iy1j3bo8tmpmvspq4" -H "Authorization: Bearer $OAUTH" -s "https://api.twitch.tv/helix/streams?first=$LIMIT&user_id=$FOLLOW_IDS" | jshon -e data -a -e user_name -u -p -e game_id -u -p -e viewer_count -u)
 
       # Set limit based on received value
       LIMIT=$((${#array[@]}/3))
@@ -194,7 +194,7 @@ case $1 in
       # Convert Ampersands to %26 for webcall
       GAME=${GAME//&/%26}
 
-      GAME_ID=$(curl -H "Authorization: Bearer $OAUTH" -s "https://api.twitch.tv/helix/games?limit=$LIMIT\&name=$GAME" | jshon -Q -e data -a -e id -u)
+      GAME_ID=$(curl -H "Client-ID: 5k0hscvhd7l4o7iy1j3bo8tmpmvspq4" -H "Authorization: Bearer $OAUTH" -s "https://api.twitch.tv/helix/games?limit=$LIMIT\&name=$GAME" | jshon -Q -e data -a -e id -u)
 
       # Sad face if no follows are live
       if [ $GAME_ID -eq 0 ]; then
@@ -202,7 +202,7 @@ case $1 in
       fi
 
       # Parse Twitch JSON using jshon
-      $ARRAY array < <(curl -H "Authorization: Bearer $OAUTH" -s "https://api.twitch.tv/helix/streams?first=$LIMIT&game_id=$GAME_ID" | jshon -e data -a -e user_name -u -p -e viewer_count -u)
+      $ARRAY array < <(curl -H "Client-ID: 5k0hscvhd7l4o7iy1j3bo8tmpmvspq4" -H "Authorization: Bearer $OAUTH" -s "https://api.twitch.tv/helix/streams?first=$LIMIT&game_id=$GAME_ID" | jshon -e data -a -e user_name -u -p -e viewer_count -u)
 
       # If returned streams is less than limit, adjust limit to avoid printing extra lines
       if [ ${#array[@]} -lt $(($LIMIT*2)) ]; then
